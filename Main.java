@@ -10,8 +10,9 @@ Task attributes:
 -Priority (Maybe?)
 
  */
-//TODO 1: Find a way to add the completed date to the json file (Maybe choose an arbitrary date for a pending task?)
-//TODO 2: Redo the checkTask method to only show the indexes of the pending tasks
+//TODO: Find a way to make a file if it's missing
+//TODO: Find a way to print the tasks from a single method (addPriority, checkTask) should use that method for printing
+
 
 import java.io.*;
 import java.time.LocalDateTime;
@@ -46,16 +47,18 @@ public class Main {
                 checkTask();
                 break;
             case "-show":
-                System.out.println("Show");
+                printTasks(true);
                 break;
             case "-log":
-                allTasks();
+                printTasks(false);
                 break;
+            case "-priority":
+                addPriority();
             case "-menu":
                 showMenu();
                 break;
             default:
-                System.out.println("Bad iiiinput");
+                System.out.println("Bad input");
                 System.exit(0);
 
         }
@@ -70,20 +73,41 @@ public class Main {
         String content = in.nextLine();
         taskList.add(new Task(content));
         in.close();
+        writeToFile();
+    }
+    static void printTasks(boolean pending){
+        if(pending){
+            for(Task t : taskList){
+                if(t.getStatus() == false){
+                    System.out.print(t);
+                }
+            }
+        }
+        else{
+            for(Task t : taskList){
+                System.out.print(t);
+            }
+        }
         showMenu();
     }
-    static void allTasks(){
-        for(Task t : taskList){
-            System.out.print(t);
+    static void addPriority(){
+        for(int i = 0; i <taskList.size(); i++){
+            System.out.print("[ " + i + " ]" + taskList.get(i));
+        }
+        System.out.println("Choose a task to edit priority: ");
+        int input = takeInput(-1, taskList.size() - 1);
+        if(input == -1){
+            showMenu();
+        }
+        else{
+            int priority = takeInput(0, 3);
+            taskList.get(input).setPriority(priority);
         }
         showMenu();
     }
     static void checkTask(){
         for(int i = 0; i < taskList.size(); i++){
-            if(taskList.get(i).getStatus() == false) {
-                System.out.println("< " + i + " >");
-                System.out.println(taskList.get(i));
-            }
+                System.out.print("[ " + i + " ]" + taskList.get(i));
         }
         System.out.println("Choose a task to check: ");
         int input = takeInput(-1, taskList.size() - 1);
@@ -97,8 +121,8 @@ public class Main {
     }
     static void showMenu(){
         System.out.println("\n---Java Todo---");
-        System.out.println("\n[1] Add Task\n[2] Check Task\n[3] Pending Tasks\n[4] All Tasks\n[0] Quit");
-        int input = takeInput(0, 4);
+        System.out.println("\n[1] Add Task\n[2] Check Task\n[3] Edit priority\n[4] Pending Tasks\n[5] All tasks\n[0] Quit");
+        int input = takeInput(0, 5);
         switch (input){
             case 1:
                 addTask();
@@ -107,11 +131,13 @@ public class Main {
                 checkTask();
                 break;
             case 3:
-                System.out.println("Pending tasks");
+                addPriority();
                 break;
             case 4:
-                allTasks();
+                printTasks(true);
                 break;
+            case 5:
+                printTasks(false);
             case 0:
                 System.out.println("Quit");
                 writeToFile();
@@ -153,10 +179,8 @@ public class Main {
             objectBuilder.add("Date", t.getStringDate())
                     .add("Content", t.getContent())
                     .add("Priority", t.getPriority())
-                    .add("Status", t.getStatus());
-            if(t.getStatus() == true){
-                objectBuilder.add("Completed", t.getStringCheckDate());
-            }
+                    .add("Status", t.getStatus())
+                    .add("Completed", t.getStringCheckDate());
             arrayBuilder.add(objectBuilder.build());
         }
         taskJsonArray = arrayBuilder.build();
@@ -185,13 +209,19 @@ public class Main {
 
         for(int i = 0; i < data.size(); i++){
             JsonObject temp = data.getJsonObject(i);
-            taskList.add(new Task(temp.getString("Content"), temp.getString("Date"), temp.getBoolean("Status"), temp.getInt("Priority")));
+            if(temp.getBoolean("Status") == true){
+                taskList.add(new Task(temp.getString("Content"), temp.getString("Date"), temp.getInt("Priority"), temp.getString("Completed")));
+            }
+            else{
+                taskList.add(new Task(temp.getString("Content"), temp.getString("Date"), temp.getInt("Priority")));
+            }
         }
     }
 
 }
 class Task{
     private String content;
+    private String defaultCheckDate = "01/01/1990 12:00:00";
     private DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
     private LocalDateTime date;
     private boolean status;
@@ -208,28 +238,56 @@ class Task{
         status = false;
         priority = -1;
     }
+    //This is for when the user makes a task
     public Task(String content){
         this.content = content;
         date = LocalDateTime.now();
         status = false;
         priority = -1;
+        this.checkDate = LocalDateTime.parse(defaultCheckDate, dateFormat);
     }
-    public Task(String content, String date, boolean status, int priority){
+    //This is a pending task
+    public Task(String content, String date, int priority){
         this.content = content;
         this.date = LocalDateTime.parse(date, dateFormat);
-        this.status = status;
+        this.status = false;
         this.priority = priority;
+        this.checkDate = LocalDateTime.parse(defaultCheckDate, dateFormat);
+    }
+    //This is a completed task
+    public Task(String content, String date, int priority, String checkDate){
+        this.content = content;
+        this.date = LocalDateTime.parse(date, dateFormat);
+        this.status = true;
+        this.priority = priority;
+        this.checkDate = LocalDateTime.parse(checkDate, dateFormat);
     }
     public String getStringDate(){return date.format(dateFormat);}
     public LocalDateTime getDate(){return date;}
     public String getContent(){return content;}
     public int getPriority(){return priority;}
     public boolean getStatus(){return status;}
-    public String getStringCheckDate(){return checkDate.format(dateFormat);}
+    public String getStringCheckDate(){
+        if(status) {
+            return checkDate.format(dateFormat);
+        }
+        return defaultCheckDate;
+    }
+
+    public void setPriority(int priority){
+        assert priority <= 2 && priority >= 0;
+        this.priority = priority;
+    }
 
     public void check(){
-        status = true;
-        checkDate = LocalDateTime.now();
+        status = !status;
+        if(status){
+            checkDate = LocalDateTime.now();
+        }
+        else{
+            checkDate = LocalDateTime.parse(defaultCheckDate, dateFormat);
+
+        }
     }
     public String statusFormat(){
         if(status){
@@ -251,6 +309,6 @@ class Task{
     }
 
     public String toString(){
-        return "\n[Date : " + date.format(dateFormat) + " ] [Priority : " + priorityFormat() + " ] [Status : " + statusFormat() + " ] [Content : " + content + " ]";
+        return "[Date : " + date.format(dateFormat) + " ] [Priority : " + priorityFormat() + " ] [Status : " + statusFormat() + " ] [Content : " + content + " ]\n";
     }
 }
