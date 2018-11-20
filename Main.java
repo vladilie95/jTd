@@ -13,6 +13,9 @@ Task attributes:
 //TODO: Add sorting by priority
 //TODO: A cleaner way to put the data in the json file??
 
+//Todo Find a cleaner way to handle the fileRead if the file is empty (Right now i get a JsonException)
+//Todo Make the task's editable
+//Todo Make it possible to sort the tasks by date/priority/hybrid
 import java.io.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
