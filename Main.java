@@ -8,11 +8,10 @@ Task attributes:
 -Prority
 -Deadline
 -Priority (Maybe?)
+*/
 
- */
-//TODO: Find a way to make a file if it's missing
-//TODO: Find a way to print the tasks from a single method (addPriority, checkTask) should use that method for printing
-
+//TODO: Add sorting by priority
+//TODO: A cleaner way to put the data in the json file??
 
 import java.io.*;
 import java.time.LocalDateTime;
@@ -25,6 +24,7 @@ import java.util.Scanner;
 public class Main {
     static ArrayList<Task> taskList = new ArrayList<Task>();
     static final String fileName = System.getProperty("user.home") + "/.jTddata";
+    static boolean menu = false;
     public static void main(String[] args){
         readFromFile();
         if(args.length > 1){
@@ -34,6 +34,7 @@ public class Main {
             parseArgs(args[0]);
         }
         else{
+            menu = true;
             showMenu();
         }
         writeToFile();
@@ -55,6 +56,7 @@ public class Main {
             case "-priority":
                 addPriority();
             case "-menu":
+                menu = true;
                 showMenu();
                 break;
             default:
@@ -69,11 +71,11 @@ public class Main {
         writeToFile();
     }
     static void addTask(){
+        System.out.println("Insert task description: ");
         Scanner in = new Scanner(System.in);
         String content = in.nextLine();
         taskList.add(new Task(content));
-        in.close();
-        writeToFile();
+        showMenu();
     }
     static void printTasks(boolean pending){
         if(pending){
@@ -84,16 +86,13 @@ public class Main {
             }
         }
         else{
-            for(Task t : taskList){
-                System.out.print(t);
+            for(int i = 0; i < taskList.size(); i++){
+                System.out.print("[ " + i + " ]" + taskList.get(i));
             }
         }
-        showMenu();
     }
     static void addPriority(){
-        for(int i = 0; i <taskList.size(); i++){
-            System.out.print("[ " + i + " ]" + taskList.get(i));
-        }
+        printTasks(false);
         System.out.println("Choose a task to edit priority: ");
         int input = takeInput(-1, taskList.size() - 1);
         if(input == -1){
@@ -106,9 +105,7 @@ public class Main {
         showMenu();
     }
     static void checkTask(){
-        for(int i = 0; i < taskList.size(); i++){
-                System.out.print("[ " + i + " ]" + taskList.get(i));
-        }
+        printTasks(false);
         System.out.println("Choose a task to check: ");
         int input = takeInput(-1, taskList.size() - 1);
         if(input == -1){
@@ -120,6 +117,9 @@ public class Main {
         showMenu();
     }
     static void showMenu(){
+        if(!menu){
+            writeToFile();
+        }
         System.out.println("\n---Java Todo---");
         System.out.println("\n[1] Add Task\n[2] Check Task\n[3] Edit priority\n[4] Pending Tasks\n[5] All tasks\n[0] Quit");
         int input = takeInput(0, 5);
@@ -135,9 +135,10 @@ public class Main {
                 break;
             case 4:
                 printTasks(true);
-                break;
+                showMenu();
             case 5:
                 printTasks(false);
+                showMenu();
             case 0:
                 System.out.println("Quit");
                 writeToFile();
@@ -199,6 +200,7 @@ public class Main {
         JsonArray data = null;
         try{
             File fl = new File(fileName);
+            fl.createNewFile();
             FileInputStream in = new FileInputStream(fl);
             JsonReader jReader = Json.createReader(in);
             data = jReader.readArray();
@@ -206,14 +208,17 @@ public class Main {
             in.close();
         }
         catch(Exception e){System.err.println(e);}
-
-        for(int i = 0; i < data.size(); i++){
-            JsonObject temp = data.getJsonObject(i);
-            if(temp.getBoolean("Status") == true){
-                taskList.add(new Task(temp.getString("Content"), temp.getString("Date"), temp.getInt("Priority"), temp.getString("Completed")));
-            }
-            else{
-                taskList.add(new Task(temp.getString("Content"), temp.getString("Date"), temp.getInt("Priority")));
+        if(data == null){
+            System.out.println("No data found");
+        }
+        else{
+            for(int i = 0; i < data.size(); i++) {
+                JsonObject temp = data.getJsonObject(i);
+                if (temp.getBoolean("Status") == true) {
+                    taskList.add(new Task(temp.getString("Content"), temp.getString("Date"), temp.getInt("Priority"), temp.getString("Completed")));
+                } else {
+                    taskList.add(new Task(temp.getString("Content"), temp.getString("Date"), temp.getInt("Priority")));
+                }
             }
         }
     }
